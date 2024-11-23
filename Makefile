@@ -3,11 +3,11 @@
 
 # 运行开发环境
 dev:
-	gunicorn --bind '0.0.0.0:5000' --reload 'domain_admin.main:app'
+	source venv/bin/activate && gunicorn --bind '0.0.0.0:5000' --timeout 120  --reload 'domain_admin.main:app'
 
 # 运行生产环境
 pro:
-	gunicorn --bind '0.0.0.0:8000' 'domain_admin.main:app'
+	source venv/bin/activate &&  gunicorn --bind '0.0.0.0:8000' --timeout 120 'domain_admin.main:app'
 
 # 发布 make release
 .PHONY: release
@@ -16,7 +16,7 @@ release:
 
 # 打包
 build:
-	python setup.py sdist bdist_wheel
+	python setup.py sdist bdist_wheel --python-tag py2.py3
 
 # 制作 docker 镜像
 .PHONY: docker-build
@@ -36,7 +36,7 @@ docker-build-run:
 
 # 清空打包产物
 clean:
-	rm -rf temp logs database
+	rm -rf temp logs .pytest_cache
 	rm -rf dist build *.egg-info
 
 # 上传打包产物到 pypi
@@ -55,3 +55,15 @@ publish:
 .PHONY: test
 test:
 	pytest -c pytest.ini tests/api/test_index.py
+
+# 安装开发环境依赖
+# make install-require
+.PHONY: install-require
+install-require:
+	pip install -r requirements/development.txt
+
+# 快速提交
+# make fix
+.PHONY: fix
+fix:
+	git add . && git commit -m 'fix' && git push
