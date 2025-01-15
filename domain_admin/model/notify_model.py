@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, absolute_import, division
 import json
 from datetime import datetime
 
@@ -25,6 +26,9 @@ class NotifyModel(BaseModel):
 
     # 过期剩余天数
     expire_days = IntegerField(null=False, default=DEFAULT_BEFORE_EXPIRE_DAYS)
+
+    # 分组
+    groups_raw = TextField(default=None, null=True)
 
     # 原始值
     value_raw = TextField(default=None, null=True)
@@ -56,6 +60,13 @@ class NotifyModel(BaseModel):
             return json.loads(self.value_raw)
         else:
             return None
+
+    @property
+    def groups(self):
+        if self.groups_raw:
+            return json.loads(self.groups_raw)
+        else:
+            return []
 
     # email参数
     @property
@@ -136,3 +147,24 @@ class NotifyModel(BaseModel):
     def feishu_app_secret(self):
         if self.value:
             return self.value.get('app_secret')
+
+    # telegram
+    @property
+    def telegram_token(self):
+        if self.value:
+            return self.value.get('token')
+
+    @property
+    def telegram_chat_id(self):
+        if self.value:
+            return self.value.get('chat_id')
+
+    @property
+    def telegram_proxies(self):
+        if self.value:
+            return self.value.get('proxies')
+
+    @property
+    def telegram_body(self):
+        if self.value:
+            return self.value.get('body')

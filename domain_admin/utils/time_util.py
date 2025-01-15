@@ -3,33 +3,36 @@
 @File    : time_util.py
 @Date    : 2023-06-03
 """
-from dateutil import parser
+from __future__ import print_function, unicode_literals, absolute_import, division
+
 from datetime import datetime
 
-# 时间格式化
-from peewee import DateTimeField
+from dateutil import parser
+from dateutil.tz import tzlocal
 
+# 时间格式化
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
-def parse_time(time_str) -> datetime:
+def parse_time(time_str):
     """
     解析字符串为时间
     :param time_str: str
-    :return: str
+    :return: datetime
     """
 
+    # fix: Python2 TypeError: Required argument 'tz' (pos 1) not found
     return datetime.strptime(
-        parser.parse(time_str).astimezone().strftime(DATETIME_FORMAT),
+        parser.parse(time_str).astimezone(tzlocal()).strftime(DATETIME_FORMAT),
         DATETIME_FORMAT
     )
 
 
-def get_diff_days(start_date: [datetime, DateTimeField], end_date: [datetime, DateTimeField]):
+def get_diff_days(start_date, end_date):
     """
     获取两个时间对象的时间差天数
-    :param start_date:
-    :param end_date:
+    :param start_date: [datetime, DateTimeField]
+    :param end_date: [datetime, DateTimeField]
     :return:
     """
     if start_date and end_date \
@@ -38,3 +41,4 @@ def get_diff_days(start_date: [datetime, DateTimeField], end_date: [datetime, Da
         return (end_date - start_date).days
     else:
         return 0
+

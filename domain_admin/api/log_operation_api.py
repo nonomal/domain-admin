@@ -2,14 +2,16 @@
 """
 log_operation_api.py
 """
-
+from __future__ import print_function, unicode_literals, absolute_import, division
 from flask import request, g
 from playhouse.shortcuts import model_to_dict
 
+from domain_admin.enums.role_enum import RoleEnum
 from domain_admin.model.log_operation_model import LogOperationModel
-from domain_admin.service import common_service
+from domain_admin.service import common_service, auth_service
 
 
+@auth_service.permission(role=RoleEnum.ADMIN)
 def get_operation_log_list():
     """
     获取操作日志列表
@@ -42,3 +44,12 @@ def get_operation_log_list():
         'list': lst,
         'total': total
     }
+
+
+@auth_service.permission(role=RoleEnum.ADMIN)
+def clear_log_operation_list():
+    """
+    清空日志
+    :return:
+    """
+    LogOperationModel.truncate_table()
