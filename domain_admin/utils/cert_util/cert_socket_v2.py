@@ -6,27 +6,30 @@
 参考：python批量检查通一个集群针对同一个域名解析到不同IP地址证书的有效性
 https://blog.csdn.net/reblue520/article/details/106832780
 """
+from __future__ import print_function, unicode_literals, absolute_import, division
 
 import socket
 import ssl
-import typing
-
+import six
 from domain_admin.log import logger
 from domain_admin.utils import time_util
 
 
-def get_domain_host_list(domain: str, port: int = 80) -> typing.List[str]:
+def get_domain_host_list(domain, port=80):
     """
     获取域名映射主机地址列表，一对多关系
-    :param domain: 域名
-    :param port: 端口
-    :return: 主机地址列表
+    :param domain: str 域名
+    :param port: int 端口
+    :return: List[str] 主机地址列表
     """
+    # fix Python2 TypeError: getaddrinfo() takes no keyword arguments
+    # host, port, family=None, socktype=None, proto=None, flags=None
     ret = socket.getaddrinfo(
-        host=domain,
-        port=port,
-        family=socket.AF_INET,  # 限制仅返回IPv4
-        proto=socket.IPPROTO_TCP)
+        domain,
+        port,
+        socket.AF_INET,  # 限制仅返回IPv4
+        0,
+        socket.IPPROTO_TCP)
 
     lst = []
     for item in ret:
@@ -35,14 +38,14 @@ def get_domain_host_list(domain: str, port: int = 80) -> typing.List[str]:
     return lst
 
 
-def get_ssl_cert(domain: str, host: str = None, port: int = 443, timeout: int = 3) -> typing.Dict:
+def get_ssl_cert(domain, host=None, port=443, timeout=3):
     """
     获取主机证书信息
-    :param domain:
-    :param host:
-    :param port:
-    :param timeout:
-    :return:
+    :param domain: str
+    :param host: str
+    :param port: int
+    :param timeout: int
+    :return: Dict
     """
     logger.info({
         'domain': domain,
@@ -57,17 +60,21 @@ def get_ssl_cert(domain: str, host: str = None, port: int = 443, timeout: int = 
 
     ssl_context = ssl.create_default_context()
 
-    with ssl_context.wrap_socket(sock, server_hostname=domain) as wrap_socket:
-        return wrap_socket.getpeercert()
+    # fix: Python2 AttributeError: __exit__
+    wrap_socket = ssl_context.wrap_socket(sock, server_hostname=domain)
+    cert = wrap_socket.getpeercert()
+    wrap_socket.close()
+
+    return cert
 
 
-def get_ssl_cert_info(domain: str, host: str = None, port: int = 443, timeout: int = 3):
+def get_ssl_cert_info(domain, host=None, port=443, timeout=3):
     """
     返回解析好的证书信息数据
-    :param domain:
-    :param host:
-    :param port:
-    :param timeout:
+    :param domain: str
+    :param host: str
+    :param port: int
+    :param timeout: int
     :return:
     """
     cert = get_ssl_cert(domain, host, port, timeout)
@@ -76,10 +83,10 @@ def get_ssl_cert_info(domain: str, host: str = None, port: int = 443, timeout: i
     return resolve_cert(cert)
 
 
-def resolve_cert(cert: typing.Dict):
+def resolve_cert(cert):
     """
     解析证书信息，仅解析重要信息
-    :param cert:
+    :param cert: Dict
     :return:
     """
     data = {
@@ -91,7 +98,8 @@ def resolve_cert(cert: typing.Dict):
 
 
 if __name__ == '__main__':
+    print(get_domain_host_list('www.taobao.com'))
     # print(get_ssl_cert_info('www.taobao.com', '111.62.93.139'))
-    print(get_ssl_cert_info('38.60.47.102', '38.60.47.102'))
+    # print(get_ssl_cert_info('38.60.47.102', '38.60.47.102'))
     # print('www.baidu.com'.encode('idna')) # b'www.baidu.com'
     # print('www.baidu.com'.encode('punycode')) # b'www.baidu.com-'

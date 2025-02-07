@@ -1,22 +1,24 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, absolute_import, division
 
-from flask import request, make_response, send_file, current_app
+import traceback
+
+from flask import request, make_response, send_file
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.utils import safe_join
 
-from domain_admin.config import TEMP_DIR
+from domain_admin import compat
 from domain_admin.log import logger
+from domain_admin.config import TEMP_DIR, APP_MODE
 from domain_admin.model.base_model import db
 from domain_admin.model.database import init_database
 from domain_admin.router import api_map, permission
 from domain_admin.service import scheduler_service, system_service
 from domain_admin.service import version_service
-from domain_admin.utils import secret_util, md5_util
 from domain_admin.utils.flask_ext import handler
 from domain_admin.utils.flask_ext import register
 from domain_admin.utils.flask_ext.flask_app import FlaskApp
-from domain_admin.config import PROMETHEUS_KEY
+from domain_admin.utils.whois_util import whois_util
 
 app = FlaskApp(
     import_name=__name__,
@@ -34,7 +36,7 @@ def before_request():
         response.headers.set('Access-Control-Max-Age', 60 * 30)
         return response
 
-    permission.check_permission()
+    permission.parse_token()
 
     db.connect(reuse_if_open=True)
 
@@ -54,6 +56,15 @@ def index():
     return send_file('public/index.html')
 
 
+@app.get('/m/')
+def mobile():
+    """
+    移动端首页
+    :return:
+    """
+    return send_file('public/m/index.html')
+
+
 @app.get('/test')
 def app_hello():
     """
@@ -66,7 +77,7 @@ def app_hello():
 @app.get('/temp/<path:filename>')
 def temp(filename):
     """临时文件"""
-    return send_file(safe_join(TEMP_DIR, filename))
+    return send_file(compat.safe_join(TEMP_DIR, filename))
 
 
 def init_app(flask_app):
@@ -75,6 +86,7 @@ def init_app(flask_app):
     :param flask_app:
     :return:
     """
+    logger.info('init_app')
 
     # 注册路由
     register.register_app_routers(flask_app, api_map.routes)
@@ -98,12 +110,19 @@ def init_app(flask_app):
     # 版本自动升级
     version_service.update_version()
 
-    # 启动定时器
-    scheduler_service.init_scheduler()
+    if APP_MODE == 'production':
+        # 启动定时器
+        scheduler_service.init_scheduler()
 
     # 初始化全局常量配置
     system_service.init_system_config(flask_app)
 
+    # 尝试更新whois_servers文件
+    # try:
+    #     whois_util.update_whois_servers()
+    # except Exception as e:
+    #     if APP_MODE == 'development':
+    #         logger.error(traceback.format_exc())
 
 
 init_app(app)

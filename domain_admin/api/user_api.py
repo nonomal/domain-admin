@@ -2,21 +2,24 @@
 """
 user_api.py
 """
-
+from __future__ import print_function, unicode_literals, absolute_import, division
 from flask import request, g
 from playhouse.shortcuts import model_to_dict, fn
 
 from domain_admin.config import DEFAULT_BEFORE_EXPIRE_DAYS
+from domain_admin.enums.role_enum import RoleEnum
 from domain_admin.model.address_model import AddressModel
 from domain_admin.model.domain_info_model import DomainInfoModel
 from domain_admin.model.domain_model import DomainModel
 from domain_admin.model.group_model import GroupModel
 from domain_admin.model.notify_model import NotifyModel
 from domain_admin.model.user_model import UserModel
-from domain_admin.utils import datetime_util, bcrypt_util
-from domain_admin.utils.flask_ext.app_exception import AppException
+from domain_admin.service import auth_service
+from domain_admin.utils import datetime_util, bcrypt_util, secret_util
+from domain_admin.utils.flask_ext.app_exception import AppException, DataNotFoundAppException
 
 
+@auth_service.permission(role=RoleEnum.USER)
 def get_user_info():
     """
     获取当前用户信息
@@ -26,12 +29,16 @@ def get_user_info():
 
     row = UserModel.get_by_id(current_user_id)
 
-    return model_to_dict(
+    data = model_to_dict(
         model=row,
+        extra_attrs=['is_default_password'],
         exclude=[UserModel.password],
     )
 
+    return data
 
+
+@auth_service.permission(role=RoleEnum.USER)
 def update_user_info():
     """
     更新当前用户信息
@@ -53,6 +60,7 @@ def update_user_info():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 def update_user_password():
     """
     更新用户密码
@@ -77,6 +85,33 @@ def update_user_password():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
+def get_user_list_by_name():
+    """
+    精确搜索，普通用户端可用
+    """
+    username = request.json.get('keyword')
+
+    query = UserModel.select().where(
+        UserModel.username == username
+    )
+    total = query.count()
+
+    lst = list(map(lambda m: model_to_dict(
+        model=m,
+        only=[
+            UserModel.id,
+            UserModel.username,
+        ],
+    ), query))
+
+    return {
+        'list': lst,
+        'total': total
+    }
+
+
+@auth_service.permission(role=RoleEnum.ADMIN)
 def get_user_list():
     """
     获取用户列表
@@ -102,6 +137,9 @@ def get_user_list():
         model=m,
         exclude=[
             UserModel.password,
+        ],
+        extra_attrs=[
+            'create_time_label'
         ]
     ), lst))
 
@@ -177,6 +215,7 @@ def get_user_list():
     }
 
 
+@auth_service.permission(role=RoleEnum.ADMIN)
 def add_user():
     """
     添加用户
@@ -198,6 +237,7 @@ def add_user():
     )
 
 
+@auth_service.permission(role=RoleEnum.ADMIN)
 def update_user_status():
     """
     更新账号可用状态
@@ -213,6 +253,28 @@ def update_user_status():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.ADMIN)
+def reset_user_password():
+    """
+    重置用户密码
+    :return:
+    """
+    user_id = request.json.get('user_id')
+
+    password = secret_util.get_random_password()
+
+    UserModel.update({
+        'password': bcrypt_util.encode_password(password)
+    }).where(
+        UserModel.id == user_id
+    ).execute()
+
+    return {
+        'password': password
+    }
+
+
+@auth_service.permission(role=RoleEnum.ADMIN)
 def delete_user():
     """
     删除用户账号

@@ -2,12 +2,20 @@
 """
 @File    : whois_util.py
 @Date    : 2023-03-24
+
+https://www.whois.com/whois/
+https://www.iana.org/domains/root/db
 """
+
+from __future__ import print_function, unicode_literals, absolute_import, division
+
+import io
 import json
 import re
 from copy import deepcopy
 from datetime import datetime
 
+import requests
 from dateutil import parser
 
 from domain_admin.log import logger
@@ -16,8 +24,8 @@ from domain_admin.utils.whois_util.config import (
     CUSTOM_WHOIS_CONFIGS,
     DEFAULT_WHOIS_CONFIG,
     ROOT_SERVER,
-    REGISTRAR_CONFIG_MAP
-)
+    REGISTRAR_CONFIG_MAP,
+    TEMP_WHOIS_SERVERS_PATH)
 from domain_admin.utils.whois_util.util import parse_whois_raw, get_whois_raw, load_whois_servers
 
 WHOIS_CONFIGS = None
@@ -28,11 +36,11 @@ class DomainInfo(object):
     expire_time = None
 
 
-def resolve_domain(domain: str) -> str:
+def resolve_domain(domain):
     """
     域名转换
-    :param domain:
-    :return:
+    :param domain: str
+    :return: str
     """
     # 解析出域名和顶级后缀
     if domain_util.is_ipv4(domain):
@@ -80,19 +88,19 @@ def load_whois_servers_config():
         config[encode_key] = default_config
 
         # 合并配置
-    logger.debug(config)
+    # logger.debug(config)
     return config
 
 
-def get_whois_config(domain: str) -> [str, None]:
+def get_whois_config(domain):
     """
     获取域名信息所在服务器
-    :param domain:
-    :return:
+    :param domain: str
+    :return: [str, None]
     """
     global WHOIS_CONFIGS
 
-    logger.debug('get_whois_config %s', domain)
+    # logger.debug('get_whois_config %s', domain)
     root = domain.split('.')[-1]
 
     if WHOIS_CONFIGS is None:
@@ -108,7 +116,7 @@ def get_whois_config(domain: str) -> [str, None]:
             server_config['whois_server'] = domain_whois_server
             return server_config
         else:
-            raise Exception(f'not support {root}')
+            raise Exception('not support {}'.format(root))
 
 
 def get_domain_whois_server_from_root(domain):
@@ -129,6 +137,8 @@ def get_domain_raw_whois(domain):
     whois_config = get_whois_config(domain)
 
     whois_server = whois_config['whois_server']
+
+    logger.info('whois_server: %s', whois_server)
 
     raw_data = get_whois_raw(domain, whois_server, timeout=10)
     logger.debug(raw_data)
@@ -191,7 +201,7 @@ def get_domain_whois(domain):
     if registrar_url:
         registrar_url = handle_url(registrar_url)
 
-    if start_time and expire_time:
+    if start_time or expire_time:
         return {
             'start_time': start_time,
             'registrar': registrar,
@@ -202,10 +212,10 @@ def get_domain_whois(domain):
         return None
 
 
-def get_domain_info(domain: str):
+def get_domain_info(domain):
     """
     获取域名信息
-    :param domain:
+    :param domain: str
     :return:
     """
     # 处理带端口号的域名
@@ -217,3 +227,20 @@ def get_domain_info(domain: str):
     logger.debug(json_util.json_encode(res, indent=2, ensure_ascii=False))
 
     return res
+
+
+def update_whois_servers():
+    logger.info("update whois-servers")
+    # https://github.com/WooMai/whois-servers/blob/master/list.txt
+    # url = 'https://raw.githubusercontent.com/WooMai/whois-servers/master/list.txt'
+    url = 'https://raw.gitmirror.com/WooMai/whois-servers/master/list.txt'
+    res = requests.get(url, timeout=3)
+
+    if res.ok:
+        with io.open(TEMP_WHOIS_SERVERS_PATH, 'w', encoding='utf-8') as f:
+            f.write(res.text)
+
+
+if __name__ == '__main__':
+    ret = get_domain_info('baidu.com')
+    print(ret)

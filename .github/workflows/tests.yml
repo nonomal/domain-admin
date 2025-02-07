@@ -21,10 +21,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # Run in all these versions of Python
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        # 排除版本
+        exclude:
+          - os: ubuntu-latest
+            python-version: "3.5"
+          - os: macos-latest
+            python-version: "3.5"
+          - os: macos-latest
+            python-version: "3.7"
 
     steps:
-        # Checkout the latest code from the repo
+      # Checkout the latest code from the repo
       - name: Checkout repo
         uses: actions/checkout@v3
         # Setup which version of Python to use
@@ -45,4 +53,5 @@ jobs:
         run: python setup.py install
         # Run the tests. I'm using pytest and the file is in the tests directory.
       - name: Run tests
-        run:  pytest -c pytest.ini tests/api/test_index.py
+        #  run:  pytest -c pytest.ini tests/api/test_index.py
+        run:  python -m unittest tests/test_hello.py

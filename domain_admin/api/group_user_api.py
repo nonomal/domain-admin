@@ -2,15 +2,19 @@
 """
 group_user_api.py
 """
+from __future__ import print_function, unicode_literals, absolute_import, division
 from flask import request, g
 from playhouse.shortcuts import model_to_dict
 
 from domain_admin.enums.operation_enum import OperationEnum
+from domain_admin.enums.role_enum import RoleEnum
 from domain_admin.model.group_model import GroupModel
 from domain_admin.model.group_user_model import GroupUserModel
-from domain_admin.service import group_service, operation_service, common_service
+from domain_admin.service import group_service, operation_service, common_service, auth_service
+from domain_admin.utils.flask_ext.app_exception import DataNotFoundAppException
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupUserModel,
     operation_type_id=OperationEnum.CREATE,
@@ -40,6 +44,7 @@ def add_group_user():
     return {'id': row.id}
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupUserModel,
     operation_type_id=OperationEnum.UPDATE,
@@ -67,6 +72,7 @@ def update_group_user_by_id():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupUserModel,
     operation_type_id=OperationEnum.DELETE,
@@ -90,6 +96,7 @@ def delete_group_user_by_id():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupUserModel,
     operation_type_id=OperationEnum.BATCH_DELETE,
@@ -116,6 +123,7 @@ def delete_group_user_by_ids():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 def get_group_user_list():
     """
     获取列表
@@ -163,6 +171,7 @@ def get_group_user_list():
     }
 
 
+@auth_service.permission(role=RoleEnum.USER)
 def get_group_user_by_id():
     """
     获取

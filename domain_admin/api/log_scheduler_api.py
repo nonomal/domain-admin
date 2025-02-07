@@ -2,13 +2,16 @@
 """
 log_scheduler_api.py
 """
-
+from __future__ import print_function, unicode_literals, absolute_import, division
 from flask import request, g
 from playhouse.shortcuts import model_to_dict
 
+from domain_admin.enums.role_enum import RoleEnum
 from domain_admin.model.log_scheduler_model import LogSchedulerModel
+from domain_admin.service import auth_service
 
 
+@auth_service.permission(role=RoleEnum.ADMIN)
 def get_log_scheduler_list():
     """
     获取调度日志列表
@@ -44,6 +47,7 @@ def get_log_scheduler_list():
     }
 
 
+@auth_service.permission(role=RoleEnum.ADMIN)
 def clear_log_scheduler_list():
     """
     清空日志

@@ -3,7 +3,7 @@
 @File    : env_config.py
 @Date    : 2023-06-13
 """
-
+from __future__ import print_function, unicode_literals, absolute_import, division
 from environs import Env
 from .default_config import *
 
@@ -27,3 +27,12 @@ SECRET_KEY = env.str("SECRET_KEY", DEFAULT_SECRET_KEY)
 
 # token_expire_days
 TOKEN_EXPIRE_DAYS = env.int("TOKEN_EXPIRE_DAYS", DEFAULT_TOKEN_EXPIRE_DAYS)
+
+# APP_MODE : production, development
+APP_MODE = env.str("APP_MODE", 'production')
+
+# ALLOW_COMMANDS
+ALLOW_COMMANDS = [cmd.strip() for cmd in env.str("ALLOW_COMMANDS", '').split(';') if cmd.strip()]
+
+# ENABLED_REGISTER
+ENABLED_REGISTER = env.bool("ENABLED_REGISTER", False)

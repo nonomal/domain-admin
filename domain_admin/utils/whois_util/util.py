@@ -3,14 +3,22 @@
 @File    : util.py
 @Date    : 2023-03-25
 """
+from __future__ import print_function, unicode_literals, absolute_import, division
+
+import io
+import os
 import socket
 from os import path
 
+import requests
 
-def parse_whois_raw(whois_raw: str):
+from domain_admin.utils.whois_util.config import TEMP_WHOIS_SERVERS_PATH, DEFAULT_WHOIS_SERVERS_PATH
+
+
+def parse_whois_raw(whois_raw):
     """
     解析键值对
-    :param whois_raw:
+    :param whois_raw: str
     :return:
     """
     data = {}
@@ -19,9 +27,10 @@ def parse_whois_raw(whois_raw: str):
         if 'Record expires on' in row or 'Record created on' in row:
             row_split = row.split("on", maxsplit=1)
         elif ":" in row:
-            row_split = row.split(":", maxsplit=1)
+            # fix: Python2 split() takes no keyword arguments
+            row_split = row.split(":", 1)
         else:
-            row_split = row.split(" ", maxsplit=1)
+            row_split = row.split(" ", 1)
 
         if len(row_split) == 2:
             key, value = row_split
@@ -30,13 +39,14 @@ def parse_whois_raw(whois_raw: str):
     return data
 
 
-def get_whois_raw(domain: str, server: str, port=43, timeout=5) -> str:
+def get_whois_raw(domain, server, port=43, timeout=5):
     """
     发送http请求，获取信息
-    :param domain:
-    :param server:
-    :param port:
-    :return:
+    :param domain: str
+    :param server: str
+    :param port: int
+    :param timeout: int
+    :return: str
     """
     # 创建连接
     sock = socket.create_connection((server, port))
@@ -69,7 +79,15 @@ def load_whois_servers():
     """
     dct = {}
 
-    with open(path.join(path.dirname(__file__), 'whois-servers.txt'), 'r') as f:
+    # 获取文件路径
+    whois_servers_file_path = None
+    if os.path.exists(TEMP_WHOIS_SERVERS_PATH):
+        whois_servers_file_path = TEMP_WHOIS_SERVERS_PATH
+    else:
+        whois_servers_file_path = DEFAULT_WHOIS_SERVERS_PATH
+
+    # fix：Python2 encoding error
+    with io.open(whois_servers_file_path, 'r', encoding='utf-8') as f:
         for line in f:
             if line.startswith(";"):
                 pass
@@ -81,3 +99,4 @@ def load_whois_servers():
                 dct[root.strip()] = server.strip()
 
     return dct
+

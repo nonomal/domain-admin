@@ -3,6 +3,14 @@
 @File    : config.py
 @Date    : 2023-03-25
 """
+from __future__ import print_function, unicode_literals, absolute_import, division
+
+from os import path
+
+from domain_admin.config import TEMP_DIR
+
+DEFAULT_WHOIS_SERVERS_PATH = path.join(path.dirname(__file__), 'whois-servers.txt')
+TEMP_WHOIS_SERVERS_PATH = path.join(TEMP_DIR, 'whois-servers.txt')
 
 # 根服务器地址
 ROOT_SERVER = 'whois.iana.org'
@@ -56,12 +64,39 @@ CUSTOM_WHOIS_CONFIGS = {
         'expire_time': 'Expiration Time',
     },
     'tw': {
-        'whois_server': 'whois.twnic.net',
+        # 'whois_server': 'whois.twnic.net',
         'registry_time': 'Record created',
         "registry_time_format": '%Y-%m-%d %H:%M:%S (UTC+8)',
         'expire_time': 'Record expires',
         "expire_time_format": '%Y-%m-%d %H:%M:%S (UTC+8)',
-    }
+    },
+    'ws': {
+        'registry_time': 'Creation Date',
+        'expire_time': 'Registrar Registration Expiration Date',
+    },
+
+    # 网页查询：https://www.whois.cm/
+    'cm': {
+        'whois_server': 'whois.registrar.cm',
+        'registry_time': 'Creation Date',
+        'expire_time': 'Registry Expiry Date'
+    },
+    'by': {
+        'whois_server': 'whois.cctld.by',
+        'registry_time': 'Creation Date',
+        'expire_time': 'Expiration Date',
+    },
+    'im': {
+        'expire_time': 'Expiry Date',
+        'expire_time_format': '%d/%m/%Y %H:%M:%S',
+    },
+    'kr': {
+        'whois_server': 'whois.kr',
+        'registry_time': 'Registered Date',
+        "registry_time_format": '%Y. %m. %d.',
+        'expire_time': 'Expiration Date',
+        "expire_time_format": '%Y. %m. %d.',
+    },
 }
 
 # 国内cn域名注册商

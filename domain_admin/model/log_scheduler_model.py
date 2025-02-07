@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, absolute_import, division
 import math
 from datetime import datetime
 
@@ -15,7 +16,7 @@ class LogSchedulerModel(BaseModel):
     # 状态
     status = BooleanField(default=False)
 
-    # 错误信息
+    # 执行结果
     error_message = TextField(default='')
 
     # 创建时间
@@ -30,7 +31,11 @@ class LogSchedulerModel(BaseModel):
     @property
     def total_time(self):
         if isinstance(self.update_time, datetime) and isinstance(self.create_time, datetime):
-            return math.ceil(self.update_time.timestamp() - self.create_time.timestamp())
+            return datetime_util.get_timestamp(self.update_time) - datetime_util.get_timestamp(self.create_time)
+        elif isinstance(self.create_time, datetime):
+            return datetime_util.get_timestamp(datetime.now()) - datetime_util.get_timestamp(self.create_time)
+        else:
+            return 0
 
     @property
     def total_time_label(self):

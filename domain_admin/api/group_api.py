@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, absolute_import, division
 from operator import itemgetter
 
 from flask import request, g
@@ -6,13 +7,16 @@ from peewee import fn
 from playhouse.shortcuts import model_to_dict
 
 from domain_admin.enums.operation_enum import OperationEnum
+from domain_admin.enums.role_enum import RoleEnum
 from domain_admin.model.domain_info_model import DomainInfoModel
 from domain_admin.model.domain_model import DomainModel
 from domain_admin.model.group_model import GroupModel
 from domain_admin.model.group_user_model import GroupUserModel
-from domain_admin.service import group_service, operation_service, group_user_service
+from domain_admin.service import group_service, operation_service, group_user_service, auth_service
+from domain_admin.utils.flask_ext.app_exception import ForbiddenAppException, DataNotFoundAppException
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupModel,
     operation_type_id=OperationEnum.CREATE,
@@ -36,6 +40,7 @@ def add_group():
     return {'id': row.id}
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupModel,
     operation_type_id=OperationEnum.UPDATE,
@@ -52,7 +57,15 @@ def update_group_by_id():
     group_id = request.json['id']
     name = request.json.get('name')
 
-    group_service.check_group_permission(group_id, current_user_id)
+    # group_service.check_group_permission(group_id, current_user_id)
+    # check data
+    group_row = GroupModel.select().where(
+        GroupModel.id == group_id,
+        GroupModel.user_id == current_user_id
+    ).first()
+
+    if not group_row:
+        raise DataNotFoundAppException()
 
     GroupModel.update(
         name=name,
@@ -61,6 +74,7 @@ def update_group_by_id():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupModel,
     operation_type_id=OperationEnum.DELETE,
@@ -75,10 +89,16 @@ def delete_group_by_id():
 
     group_id = request.json['id']
 
-    GroupModel.delete().where(
+    # check data
+    group_row = GroupModel.select().where(
         GroupModel.id == group_id,
         GroupModel.user_id == current_user_id
-    ).execute()
+    ).first()
+
+    if not group_row:
+        raise DataNotFoundAppException()
+
+    GroupModel.delete_by_id(group_row.id)
 
     # 重置已分类的证书 和 域名
     DomainModel.update(
@@ -98,6 +118,7 @@ def delete_group_by_id():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 @operation_service.operation_log_decorator(
     model=GroupModel,
     operation_type_id=OperationEnum.BATCH_DELETE,
@@ -135,6 +156,7 @@ def delete_group_by_ids():
     ).execute()
 
 
+@auth_service.permission(role=RoleEnum.USER)
 def get_group_list():
     """
     获取域名列表
@@ -143,13 +165,12 @@ def get_group_list():
     # page = request.json.get('page', 1)
     # size = request.json.get('size', 10)
     keyword = request.json.get('keyword')
+    role = request.json.get('role')
 
     current_user_id = g.user_id
 
     # 分组列表数据
-    query = GroupModel.select().where(
-        GroupModel.user_id == current_user_id
-    )
+    query = GroupModel.select()
 
     # 所在分组
     group_user_list = list(GroupUserModel.select().where(
@@ -159,9 +180,17 @@ def get_group_list():
     user_group_ids = [row.group_id for row in group_user_list]
     group_user_map = {row.group_id: row.has_edit_permission for row in group_user_list}
 
-    if user_group_ids:
-        query = query.orwhere(
-            GroupModel.id.in_(user_group_ids)
+    if role == RoleEnum.ADMIN:
+        pass
+
+    elif user_group_ids:
+        query = query.where(
+            (GroupModel.user_id == current_user_id)
+            | (GroupModel.id.in_(user_group_ids))
+        )
+    else:
+        query = query.where(
+            GroupModel.user_id == current_user_id
         )
 
     if keyword:
@@ -222,7 +251,10 @@ def get_group_list():
         row_dict['group_user_count'] = group_user_groups_map.get(row.id, 0) + 1
 
         # 组权限
-        if row.user_id == current_user_id:
+        if role == RoleEnum.ADMIN:
+            has_edit_permission = True
+
+        elif row.user_id == current_user_id:
             has_edit_permission = True
         else:
             has_edit_permission = group_user_map.get(row.id, False)
@@ -240,6 +272,7 @@ def get_group_list():
     }
 
 
+@auth_service.permission(role=RoleEnum.USER)
 def get_group_by_id():
     """
     获取
@@ -249,6 +282,14 @@ def get_group_by_id():
 
     group_id = request.json['id']
 
-    group_service.check_group_permission(group_id, current_user_id)
+    # group_service.check_group_permission(group_id, current_user_id)
+    # check data
+    group_row = GroupModel.select().where(
+        GroupModel.id == group_id,
+        GroupModel.user_id == current_user_id
+    ).first()
 
-    return GroupModel.get_by_id(group_id)
+    if not group_row:
+        raise DataNotFoundAppException()
+
+    return group_row
